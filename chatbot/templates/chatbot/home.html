@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+    {% csrf_token %}
+    <h1>Welcome to the Chatbot</h1>
+    <div id="chat-container">
+      <div id="chat-messages">
+         {% for message in chat_messages %}
+                <div class="message user-message">{{ message.user_message }}</div>
+                <div class="message bot-message">{{ message.bot_response }}</div>
+         {% endfor %}
+      </div>
+      <div id="input-container">
+         <input type="text" id="user-input" placeholder="Type your message...">
+         <button id="send-button">Send</button>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+
+            var csrftoken = jQuery("[name='csrfmiddlewaretoken']").val();
+            function addMessage(message, className) {
+                $('#chat-messages').append('<div class="message ' + className + '">' + message + '</div>');
+                $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+            }
+
+            function sendMessage() {
+                var userInput = $('#user-input').val();
+                console.log("sending Message:", userInput);
+                if (userInput.trim() !== '') {
+                    addMessage(userInput, 'user-message');
+                    $.ajax({
+                        url: '/chatbot/api/',  // Make sure this matches your URL configuration
+                        headers: {
+                            'X-CSRFToken': csrftoken  // Include CSRF token in headers
+                        },
+                        type: 'POST',
+                        data: JSON.stringify({'message': userInput}),
+                        contentType: 'application/json',
+                        dataType:'json',
+                        success: function(response) {
+                            console.log('Success:', response);
+                            addMessage(response.response, 'bot-message');
+                        },
+                        error: function(xhr,status,error) {
+                            console.log('Error status:',status, error);
+                            console.log('Error:', error);
+                            console.log('Response Text:', xhr.responseText);
+                            console.log('Status Code:', xhr.status);
+                            addMessage('Failed to get response from server', 'error-message');
+                        }
+                    });
+                    $('#user-input').val('');
+                }
+            }
+
+            $('#user-input').keypress(function(e) {
+                if (e.which == 13) {
+                    sendMessage();
+                    return false;
+                }
+            });
+
+            $('#send-button').click(function() {
+                sendMessage();
+            });
+        });
+    </script>
+{% endblock %}
